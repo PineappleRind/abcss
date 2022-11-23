@@ -7,13 +7,13 @@ body=width&height(100%)
 class Parser {
   constructor() {
     this.memory = [];
-    this.expecting = "selector";
+    this.current = "";
+    this.expecting = new Set(["selector"]);
     this.cur = { line: 0, col: 0 };
     this.tokens = {
       selector: {
         value: /[^&=\(\)]/g,
-        expecting: "assignment",
-        multi: true,
+        expecting: ["selector", "assignment"],
       },
       assignment: {
         value: "=",
@@ -21,8 +21,7 @@ class Parser {
       },
       property: {
         value: /([a-z]|[A-Z]|\-)/g,
-        expecting: ["and", "separator", "valueBegin"],
-        multi: true,
+        expecting: ["property", "and", "separator", "valueBegin"],
       },
       separator: {
         value: "&",
@@ -51,32 +50,30 @@ class Parser {
 
   parse(str) {
     let result = "";
-    let curMulti = ''
+    let curMulti = "";
     for (let i = 0; i < str.length; i++) {
+      if (this.cur.col > 10) return;
       if (str[i] === "\n") this.cur.line++;
       this.cur.col++;
+      console.log(str[i]);
 
-      let expecting = this.tokens[this.expecting];
-      if (!str[i].match(expecting.value))
-        throw new Error(
-          `Unexpected token "${str[i]}". Was expecting ${this.expecting}. (Line ${this.cur.line} Col ${this.cur.col})`
-        );
+      this.expecting.forEach((o,val) => {
+        if (str[i].match(this.tokens[val].value)) {
+          // if the current char matches with the current value in set
+          this.expecting.clear();
+          if (this.memory[0] === val) curMulti += str[i];
+          // now expect what the current token expects
+          this.expecting.add(...this.tokens[val].expecting);
+          this.memory.unshift(val);
+        }
+        console.log(val);
+      });
 
-      // Case study: Current char is "s". 
-      // Expecting is "selector".
-      // Memory is [].
-      // S is a valid selector char, and selector is multi, so add 
-      // char to multi and continue, expecting selector.
-
-      if (expecting.multi === true) {
-        curMulti += str[i];
-        console.log('Continuing selector string at '+curMulti+'.')
-        this.memory.unshift(expecting);
-      } else if (str[i] !== expecting) {
-          this.expecting = expecting.expecting;
-      }
-      console.log(this)
-      continue;
+      throw new Error(
+        `Unexpected token "${str[i]}". Was expecting ${Array.from(
+          this.expecting.keys()
+        ).join(", ")}. (Line ${this.cur.line} Col ${this.cur.col})`
+      );
     }
   }
 
@@ -84,5 +81,5 @@ class Parser {
 }
 
 var parser = new Parser();
-var properties = parser.parse(abcss);
-console.log(properties);
+
+console.log(parser.parse(abcss));

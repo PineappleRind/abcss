@@ -3,3 +3,7 @@
 node_modules
 
 package-lock.json
+
+# bundled stuff
+codemirror.bundle.min.js
+editor.bundle.js
